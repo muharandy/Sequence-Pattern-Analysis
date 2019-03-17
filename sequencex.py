@@ -20,9 +20,7 @@ def event_mapping(df, ts, id, event):
 ## Event Coding
 # Function to map the events into code
     
-def event_coding(df, codes):
-    columns = ["symbol","value"]
-    lookup = spark.createDataFrame(codes,columns)
+def event_coding(df, lookup):
     
     event_coded = df.join(lookup,lookup["value"]==df["event"], "left_outer")
     event_coded = event_coded.drop("event","value")
