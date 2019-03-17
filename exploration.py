@@ -4,6 +4,8 @@ from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 from pyspark.sql.types import StringType
 
+from sklearn.model_selection import train_test_split
+
 from sequencex import *
 
 spark = SparkSession.builder.getOrCreate()
@@ -70,7 +72,7 @@ customers_churned.show()
 
 ## Tagging Target Column
 customers_tagged = customers.join(customers_churned, customers["customer_identifier"] == customers_churned["cust_id"],"left_outer")
-customers_tagged = customers_tagged.withColumn("churned",when(customers_tagged["cust_id"].isNull(),"N").otherwise("Y")).drop("cust_id")
+customers_tagged = customers_tagged.withColumn("churned",when(customers_tagged["cust_id"].isNull(),0).otherwise(1)).drop("cust_id")
 
 ## Events Mapping
 events_mapped = event_mapping(events,"interaction_timestamp","customer_identifier","interaction_type")
@@ -135,8 +137,27 @@ cust_path.show()
 
 ## Prepare Training Data Set
 
-sdf_train = cust_path.select("event_path"
+sdf_train = cust_path.select("customer_identifier","event_path"
                             , cust_path["churned"].alias("target"))
                             
 sdf_train.show()
 
+
+## Model Development
+
+# Convert to Pandas Dataframe for model training
+df = sdf_train.toPandas()
+df["target"].value_counts()
+
+# Split Features and Target
+X = df.iloc[:,df.columns == "event_path"]
+y = df.iloc[:,df.columns == "target"]
+
+
+# Create train, test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=17)
+
+print("X_train: ", X_train.shape)
+print("X_test: ", X_test.shape)
+print("y_train: ", y_train.shape)
+print("y_test: ", y_test.shape)
